@@ -7,7 +7,7 @@ export default class MulterGoogleCloudStorage implements multer.StorageEngine {
 
 	private gcobj: Storage;
 	private gcsBucket: Bucket;
-	private options: ConfigurationObject & { acl?: string, bucket?: string };
+	private options: ConfigurationObject & { acl?: string, bucket?: string, setMetadata?: boolean };
 
 	getFilename(req, file, cb) {
     	cb(null,`${uuid()}_${file.originalname}`);
@@ -59,7 +59,14 @@ export default class MulterGoogleCloudStorage implements multer.StorageEngine {
 					return cb(err);
 				}
 				var gcFile = this.gcsBucket.file(filename);
-				file.stream.pipe(gcFile.createWriteStream({ predefinedAcl: this.options.acl || 'private' }))
+				var gcStreamOpts = { predefinedAcl: this.options.acl || 'private', metadata: {} };
+				if (this.options.setMetadata) {
+					gcStreamOpts.metadata = {
+						contentType: file.mimetype
+					};
+				}
+
+				file.stream.pipe(gcFile.createWriteStream(gcStreamOpts))
 					.on('error', (err) => cb(err))
 					.on('finish', (file) => cb(null, {
 							path: `https://${this.options.bucket}.storage.googleapis.com/${filename}`,
